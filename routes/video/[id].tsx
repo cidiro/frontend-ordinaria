@@ -11,7 +11,6 @@ type State = {
 
 type Data = {
   video: Video;
-  userId: string;
 };
 
 export const handler: Handlers<Data, State> = {
@@ -33,19 +32,58 @@ export const handler: Handlers<Data, State> = {
       const headers = new Headers({
         location: "/",
       });
-      return new Response(null, {
-        status: 302,
-        headers,
-      });
+
+      if (response.status == 500) {
+        return new Response("Unexpected error", {
+          status: 302,
+          headers,
+        });
+      }
+      else if (response.status == 404) {
+        return new Response("User not found with given userId", {
+          status: 302,
+          headers,
+        });
+      }
+      else {
+        return new Response("Other error", {
+          status: 302,
+          headers,
+        });
+      }
     }
 
     const video = await response.json();
-    return ctx.render({ userId, video });
+    return ctx.render({ video });
+  },
+
+  POST: async (
+    req: Request,
+    ctx: FreshContext<State, Data>,
+  ) => {
+    const body = await req.json();
+    const { videoId } = body;
+    const userId = ctx.state.id;
+
+    const response = await fetch(
+      `${Deno.env.get("API_URL")}/fav/${userId}/${videoId}`,
+      { method: "POST" },
+    );
+
+    if (!response.ok) {
+      return new Response(null, {
+        status: 500,
+      })
+    }
+
+    return new Response(null, {
+      status: 200,
+    })
   },
 };
 
 const Page = (props: PageProps<Data>) => (
-  <VideoDetail video={props.data.video} userId={props.data.userId} />
+  <VideoDetail video={props.data.video} />
 );
 
 export default Page;
